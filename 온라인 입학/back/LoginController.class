@@ -1,0 +1,90 @@
+@Transactional
+  public int insertUser(Map<String, String> params)
+    throws Exception
+  {
+    int result = 1;
+    String stdt_no = "";
+    String quest_no = "";
+    String uuid = null;
+    String id = (String)params.get("id");
+    String password = (String)params.get("password");
+    Map<String, Object> khinfoList = new HashMap();
+    Map<String, String> cmap = new HashMap();
+    try
+    {
+      String encPassword = this.authorityManager.getEncryptString(password, id);
+      params.put("password", encPassword);
+      if ("P".equals(params.get("member_flag")))
+      {
+        String khinfoResult = (String)params.get("khinfoResult");
+        params.put("stdtMobile", (String)params.get("mobile"));
+        
+        khinfoList = (Map)this.connection.queryForObject("login.getQuestNo", params);
+        
+        int checkUserCount = ((Integer)this.connection.queryForObject("login.checkUserNoCondition", params)).intValue();
+        if (checkUserCount == 1) {
+          quest_no = khinfoList.get("no");
+        }
+        params.put("quest_no", quest_no);
+        params.put("counselor", khinfoList.get("res_id"));
+        
+        String curr_pros = khinfoList.get("curr_prospects");
+        if (curr_pros != null) {
+          cmap = getCurrInfo(curr_pros);
+        }
+        if (khinfoResult.contains("1"))
+        {
+          if (cmap != null)
+          {
+            params.put("start_date", (String)cmap.get("begin_date"));
+            params.put("reg_curr", curr_pros);
+            params.put("member_flag", "T");
+          }
+          this.connection.insert("login.insertCurrStdt", params);
+          stdt_no = (String)this.connection.queryForObject("login.CurrStdtNo");
+          if (cmap != null) {
+            cmap.put("stdt_no", stdt_no);
+          }
+          params.put("stdt_no", stdt_no);
+          if (stdt_no != "")
+          {
+            this.connection.insert("login.insertCurrStdtCurr", cmap != null ? cmap : params);
+            if (khinfoResult.split(":").length == 2)
+            {
+              params.put("khinfoResult", "-2");
+              this.connection.update("login.updateUser", params);
+            }
+            else
+            {
+              this.connection.insert("login.insertUser", params);
+            }
+          }
+        }
+        else if ("2".equals(khinfoResult))
+        {
+          params.put("no", khinfoList.get("no"));
+          int stdtNo = ((Integer)this.connection.queryForObject("login.selectCurrStdtByQno", params)).intValue();
+          if (stdtNo != 0)
+          {
+            params.put("stdt_no", String.valueOf(stdtNo));
+            params.put("member_flag", "T");
+            this.connection.insert("login.insertUser", params);
+            this.connection.update("login.updateUserCurr", params);
+          }
+          stdt_no = String.valueOf(stdtNo);
+        }
+        SignatureImage.saveSignature(this.loginService, (String)params.get("user_signature"), (String)params.get("realPath"), stdt_no);
+      }
+      else
+      {
+        this.connection.insert("login.insertUser", params);
+      }
+    }
+    catch (Exception e)
+    {
+      e.printStackTrace();
+      result = 0;
+      throw e;
+    }
+    return result;
+  }
