@@ -1,0 +1,160 @@
+tMapping({"/question/event.kh"})
+  public ModelAndView event(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    Map<String, String> map = null;
+    List<String> topPrograms = null;
+    Map<String, Object> eventMap = null;
+    logger.debug("event!!!!");
+    try
+    {
+      Map<String, Object> user = (Map)req.getSession().getAttribute("USER");
+      if (user != null)
+      {
+        params.put("stdt_no", (String)user.get("stdt_no"));
+        String event_no = this.questionService.checkTheEventApplied(params);
+        model.put("event_no", event_no);
+      }
+      String currentDevice = "web";
+      String logUA = req.getHeader("user-agent").toLowerCase();
+      for (int i = 0; i < logMP.length; i++) {
+        if (logUA.indexOf(logMP[i]) != -1)
+        {
+          currentDevice = "mobile";
+          break;
+        }
+      }
+      params.put("currentDevice", currentDevice);
+      params.put("requestURI", req.getRequestURI());
+      
+      topPrograms = this.loginService.selectEventTopPrograms(params);
+      eventMap = this.loginService.selectEmplEvent(topPrograms, params);
+      
+      model.put("topPrograms", topPrograms);
+      model.put("eventMap", eventMap);
+      model.put("user_eventCount", Integer.valueOf(eventMap.size()));
+      
+      model.put("params", params);
+      mav = new ModelAndView("/WEB-INF/jsp/question/event.jsp", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("event method error ", e);
+      model.put("message", "[EVENT ]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("/WEB-INF/jsp/question/event.jsp", model);
+    }
+    return mav;
+  }
+  
+  @RequestMapping({"/question/getEventProgram.kh"})
+  public ModelAndView getEventProgram(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    logger.debug("getEventProgram!!!!");
+    try
+    {
+      Map<String, Object> user = (Map)req.getSession().getAttribute("USER");
+      if (user != null)
+      {
+        String member_flag = (String)user.get("member_flag");
+        if (member_flag.equals("T"))
+        {
+          params.put("stdt_no", (String)user.get("stdt_no"));
+          params.put("name", (String)user.get("name"));
+          params.put("member_flag", (String)user.get("member_flag"));
+          params.put("mobile", (String)user.get("mobile"));
+          
+          params.put("start_event", "2019. 11. 01");
+          
+          Map<String, String> currInfo = this.questionService.getUserCurrInfo(params);
+          currInfo.put("category", (String)params.get("category"));
+          Map<String, String> select_user_event = this.questionService.checkUserSelectEvent(params);
+          List<Map<String, String>> programData = this.questionService.getEventProgram(currInfo);
+          String[] programListNames = { "program", "programDetail", "time" };
+          for (int i = 0; i < 3; i++)
+          {
+            List<Map<String, String>> list = new ArrayList();
+            for (Map<String, String> program : programData) {
+              if (((String)program.get("depth")).equals(i + 1)) {
+                list.add(program);
+              }
+            }
+            model.put(programListNames[i], list);
+          }
+          if (select_user_event != null)
+          {
+            model.put("select_no", select_user_event.get("select_no"));
+            model.put("apply_mobile", select_user_event.get("apply_mobile"));
+          }
+        }
+      }
+      mav = new ModelAndView("/WEB-INF/jsp/question/eventCheck_" + (String)params.get("category") + ".jsp", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("getEventProgram method error ", e);
+      model.put("message", "[getEventProgram ]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("/WEB-INF/jsp/question/event.jsp", model);
+    }
+    return mav;
+  }
+  
+  @RequestMapping({"/question/insertTalkEvent.kh"})
+  public ModelAndView insertTalkEvent(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    int tichekcode = 0;
+    int result = 0;
+    int check = 0;
+    String stdt_no = "";
+    
+    logger.debug("insertTalkEvent!!!!");
+    try
+    {
+      check = this.questionService.checkEventData(params);
+      if (check != 0)
+      {
+        model.put("result", "2");
+        model.put("message", ".");
+        return new ModelAndView("jsonView", model);
+      }
+      if (((params.get("stdt_no") == null) || ("".equals(params.get("stdt_no")))) && (!"0".equals(params.get("branch"))))
+      {
+        stdt_no = this.questionService.getEventStdtNo(params);
+        logger.info(" : " + stdt_no);
+        if ((stdt_no != null) && (!"".equals(stdt_no))) {
+          params.put("stdt_no", stdt_no);
+        }
+      }
+      tichekcode = this.questionService.getEventTicketNumber(params);
+      params.put("tichekcode", tichekcode + 1);
+      result = this.questionService.insertEvent(params);
+      params.put("no", result);
+      result = this.questionService.insertTalkEvent(params);
+      if (result == 1)
+      {
+        model.put("result", "1");
+        model.put("message", ".");
+      }
+      else if (result == 0)
+      {
+        model.put("result", "0");
+        model.put("message", ".");
+      }
+      mav = new ModelAndView("jsonView", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("insertTalkEvent method error ", e);
+      model.put("result", Integer.valueOf(0));
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("jsonView", model);
+    }
+    return mav;
+  }
