@@ -1,0 +1,70 @@
+package com.kh.login;
+
+import com.kh.utils.Utils;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import javax.imageio.ImageIO;
+import javax.xml.bind.DatatypeConverter;
+import org.apache.log4j.Logger;
+
+public class SignatureImage
+  extends Thread
+{
+  static Logger logger = Logger.getLogger(SignatureImage.class);
+  
+  public static void saveSignature(ILoginService loginService, String user_signature, String realPath, String stdt_no)
+    throws Exception
+  {
+    Map<String, String> signature = new HashMap();
+    logger.info(">>>> 사인 이미지로 변환 시작 : " + user_signature);
+    try
+    {
+      File newFile = new File(realPath + Utils.getPropertyData("kh.upload.signatureAuthentication.url"));
+      String base64URL = user_signature;
+      byte[] decodeBytes = DatatypeConverter.parseBase64Binary(base64URL);
+      
+      ByteArrayInputStream str = new ByteArrayInputStream(decodeBytes);
+      BufferedImage bm = ImageIO.read(str);
+      String fileName = Utils.rename("png");
+      if (!newFile.exists()) {
+        newFile.mkdirs();
+      }
+      ImageIO.write(bm, "png", new File(realPath + Utils.getPropertyData("kh.upload.signatureAuthentication.url") + fileName));
+      
+      signature.put("stdt_no", stdt_no);
+      signature.put("sigfile1", fileName);
+      if (signature != null) {
+        saveSignatureDB(signature, loginService);
+      }
+      logger.info(">>>> 사인 이미지 저장 완료");
+    }
+    catch (IllegalArgumentException e)
+    {
+      e.printStackTrace();
+      e.getMessage();
+    }
+    catch (IOException e)
+    {
+      e.printStackTrace();
+      e.getMessage();
+    }
+  }
+  
+  public static void saveSignatureDB(Map<String, String> signature, ILoginService loginService)
+    throws Exception
+  {
+    try
+    {
+      loginService.insertSignature(signature);
+    }
+    catch (IOException e)
+    {
+      e.printStackTrace();
+      e.getMessage();
+    }
+  }
+}
