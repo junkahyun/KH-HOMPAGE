@@ -1,0 +1,146 @@
+@RequestMapping({"/login/empSurvey.kh"})
+  public ModelAndView empSurvey(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    
+    logger.debug("empSurvey!!!!");
+    try
+    {
+      Map user = (Map)req.getSession().getAttribute("USER");
+      if (user == null) {
+        return new ModelAndView("redirect:/login/login.kh");
+      }
+      user.put("res_no", this.authorityManager.getDecryptString((String)user.get("res_no")));
+      
+      Map curr = null;
+      String curr_no = (String)user.get("curr_no");
+      if (curr_no != null)
+      {
+        Map currMap = (Map)user.get("currMap");
+        curr = (Map)currMap.get(curr_no);
+        user.put("currform", curr.get("currform"));
+        model.put("cData", curr);
+      }
+      model.put("params", params);
+      mav = new ModelAndView("/WEB-INF/jsp/login/empSurvey/empSurvey.jsp", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("survey method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("/WEB-INF/jsp/common/error.jsp", model);
+    }
+    return mav;
+  }
+  
+  @RequestMapping({"/login/checkEmpSurveyFrm.kh"})
+  public ModelAndView checkEmpSurveyFrm(HttpServletRequest req, HttpServletResponse res, HttpSession ses)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    Map<String, String> templateName = null;
+    List<Map<String, Object>> pData = null;
+    List<Map<String, Object>> qData = null;
+    List<Map<String, Object>> qData2 = null;
+    List<Map<String, String>> aData2 = null;
+    List<Map<String, String>> aData = null;
+    Random rnd = new Random();
+    logger.debug("checkSurvey!!!!");
+    try
+    {
+      Map user = (Map)req.getSession().getAttribute("USER");
+      
+      params.put("empSurvey", "empSurvey");
+      templateName = this.loginService.selectSurveyTemplateName(params);
+      pData = this.loginService.selectSurveyQ(params);
+      aData = this.loginService.selectSurveyA(params);
+      for (int i = 0; i < pData.size(); i++) {
+        if ("1".equals(String.valueOf(((Map)pData.get(i)).get("question_form"))))
+        {
+          String q_no = (String)((Map)pData.get(i)).get("q_no");
+          params.put("q_no", q_no);
+          params.put("q_title", "");
+          qData = this.loginService.selectSurveyQ(params);
+          for (int s = 0; s < qData.size(); s++)
+          {
+            List aList = new ArrayList();
+            List bList = new ArrayList();
+            int count = 0;
+            q_no = (String)((Map)qData.get(s)).get("q_no");
+            params.put("q_no", q_no);
+            if ("-1".equals(((Map)qData.get(s)).get("answer")))
+            {
+              params.put("q_title", "q_title");
+              qData2 = this.loginService.selectSurveyQ(params);
+              for (int q2 = 0; q2 < qData2.size(); q2++)
+              {
+                count++;
+                q_no = (String)((Map)qData2.get(q2)).get("q_no");
+                params.put("q_no", q_no);
+                aData2 = this.loginService.selectSurveyA(params);
+                if (aData2.size() > 0)
+                {
+                  aList = new ArrayList();
+                  for (int j = 0; j < aData2.size(); j++) {
+                    aList.add(aData2.get(j));
+                  }
+                }
+                ((Map)qData2.get(q2)).put("aList", aList);
+              }
+              bList.add(qData2);
+            }
+            else
+            {
+              aData2 = this.loginService.selectSurveyA(params);
+              if (aData2.size() > 0)
+              {
+                for (int j = 0; j < aData2.size(); j++)
+                {
+                  String answer_q_no = (String)((Map)aData2.get(j)).get("q_no");
+                  if (answer_q_no.equals(q_no)) {
+                    aList.add(aData2.get(j));
+                  }
+                }
+                ((Map)qData.get(s)).put("aList", aList);
+              }
+            }
+            ((Map)qData.get(s)).put("bList", bList);
+            ((Map)qData.get(s)).put("count", Integer.valueOf(count));
+          }
+          ((Map)pData.get(i)).put("sList", qData);
+        }
+        else
+        {
+          String q_no = (String)((Map)pData.get(i)).get("q_no");
+          List aList = new ArrayList();
+          q_no = (String)((Map)pData.get(i)).get("q_no");
+          for (int j = 0; j < aData.size(); j++)
+          {
+            String answer_q_no = (String)((Map)aData.get(j)).get("q_no");
+            if (answer_q_no.equals(q_no)) {
+              aList.add(aData.get(j));
+            }
+          }
+          ((Map)pData.get(i)).put("aList", aList);
+        }
+      }
+      model.put("data", pData);
+      model.put("data_length", pData.size());
+      model.put("degree", params.get("degree"));
+      model.put("curr_no", params.get("curr_no"));
+      model.put("templateName", templateName);
+      model.put("user", user);
+      
+      mav = new ModelAndView("/WEB-INF/jsp/login/empSurvey/empSurveyFrm.jsp", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("checkSurvey method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("/WEB-INF/jsp/common/error.jsp", model);
+    }
+    return mav;
+  }
