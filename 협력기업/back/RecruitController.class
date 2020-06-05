@@ -1,0 +1,60 @@
+
+  public ModelAndView collaborate(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    int total = 0;
+    try
+    {
+      total = this.recruitService.getTotalCollaborate();
+      model.put("total", Integer.valueOf(total));
+      
+      mav = new ModelAndView("/WEB-INF/jsp/recruit/collaborate.jsp", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("jobsearch method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("/WEB-INF/jsp/common/error.jsp", model);
+    }
+    return mav;
+  }
+  
+  @RequestMapping({"/recruit/collaborateJava.kh"})
+  public ModelAndView collaborateJava(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    List<Map<String, String>> list = null;
+    int count = 0;
+    try
+    {
+      if ((params.get("cpage") == null) && ("".equals(params.get("cpage")))) {
+        params.put("cpage", "1");
+      }
+      int cpage = Integer.parseInt((String)params.get("cpage"));
+      int begin = (cpage - 1) * 80 + 1;
+      int end = cpage * 80;
+      
+      params.put("begin", String.valueOf(begin));
+      params.put("end", String.valueOf(end));
+      
+      count = this.recruitService.selectCompanyCount(params);
+      list = this.recruitService.selectCollaborateList(params);
+      
+      model.put("count", Integer.valueOf(count));
+      model.put("list", list);
+      model.put("end", Integer.valueOf(end));
+      
+      mav = new ModelAndView("jsonView", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("jobsearch method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("/WEB-INF/jsp/common/error.jsp", model);
+    }
+    return mav;
+  }
