@@ -1,0 +1,272 @@
+diaBoard.kh"})
+  public ModelAndView mediaUpload(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    List list = null;
+    HttpSession session = req.getSession();
+    int sub_category_no = 0;
+    List<Map<String, String>> categoryList = null;
+    try
+    {
+      if ((params.get("cpage") == null) || (((String)params.get("cpage")).trim().equals(""))) {
+        params.put("cpage", "1");
+      }
+      if ((params.get("sortpage") == null) || (((String)params.get("sortpage")).trim().equals("")))
+      {
+        params.put("sortpage", "10");
+        model.put("sortpage", "10");
+      }
+      else
+      {
+        model.put("sortpage", params.get("sortpage"));
+      }
+      if ((params.get("sortlist") == null) || (((String)params.get("sortlist")).trim().equals(""))) {
+        params.put("sortlist", "one");
+      }
+      if (params.get("searchCategory") != null)
+      {
+        String searchCategory = (String)params.get("searchCategory");
+        String str1;
+        switch ((str1 = searchCategory).hashCode())
+        {
+        case 1550036: 
+          if (str1.equals("")) {}
+          break;
+        case 1631876: 
+          if (str1.equals("")) {
+            break;
+          }
+          break;
+        case 1749063: 
+          if (str1.equals("")) {}
+          break;
+        case 1193252476: 
+          if (str1.equals("")) {}
+          break;
+        case 1520361300: 
+          if (!str1.equals(""))
+          {
+            break label412;
+            sub_category_no = 1;
+            break label415;
+            sub_category_no = 2;
+            break label415;
+            sub_category_no = 3;
+            break label415;
+            sub_category_no = 4;
+            break label415;
+          }
+          else
+          {
+            sub_category_no = 5;
+          }
+          break;
+        }
+        label412:
+        sub_category_no = 0;
+        label415:
+        if (sub_category_no != 0)
+        {
+          params.put("sub_category_no", sub_category_no);
+          categoryList = this.loginService.getCategoryList(params);
+          model.put("categoryList", categoryList);
+        }
+      }
+      Map user = (Map)req.getSession().getAttribute("USER");
+      Map curr = null;
+      String curr_no = (String)user.get("curr_no");
+      if (curr_no != null)
+      {
+        Map currMap = (Map)user.get("currMap");
+        curr = (Map)currMap.get(curr_no);
+        model.put("cData", curr);
+        params.put("currno", (String)curr.get("no"));
+        params.put("gubun", (String)curr.get("gubun"));
+      }
+      params.put("stdt_no", (String)user.get("stdt_no"));
+      params.put("curr_no", curr_no);
+      
+      list = this.loginService.selectMedia(params);
+      model.put("total", this.loginService.selectMediaCount(params));
+      
+      model.put("list", list);
+      model.put("cpage", params.get("cpage"));
+      model.put("params", params);
+      session.setAttribute("onetimeHit", "1");
+      
+      mav = new ModelAndView("/WEB-INF/jsp/login/mediaBoard.jsp", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("jobAppli method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("/WEB-INF/jsp/rad/curr/ncsLink.jsp", model);
+    }
+    return mav;
+  }
+  
+  @RequestMapping({"/login/mediaBoardView.kh"})
+  public ModelAndView mediaView(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    Map<String, String> mediaViewData = null;
+    Map<String, String> prev = null;
+    Map<String, String> next = null;
+    List<Map<String, String>> cList = null;
+    HashMap<String, String> sData = new HashMap();
+    try
+    {
+      HttpSession session = req.getSession();
+      String onetimeHit = (String)session.getAttribute("onetimeHit");
+      Map user = (Map)session.getAttribute("USER");
+      if (user == null)
+      {
+        String ajaxCall = req.getHeader("AJAX");
+        if ("true".equals(ajaxCall))
+        {
+          res.sendError(5000);
+          return null;
+        }
+        return new ModelAndView("redirect:/login/login.kh");
+      }
+      String auth = (String)user.get("auth");
+      String category = (String)params.get("category");
+      if (("".equals(category)) && ((auth == null) || ("false".equals(auth))))
+      {
+        params.put("reg_id", (String)user.get("id"));
+        sData = getIpinInfo((String)params.get("enc_data"));
+        String CPCODE = (String)sData.get("sCPRequestNum");
+        String CPREQUEST = (String)session.getAttribute("CPREQUEST");
+        String dupinfo = (String)user.get("dupinfo");
+        String name = (String)user.get("name");
+        if ((CPREQUEST != null) && (CPCODE != null) && (!CPREQUEST.equals(CPCODE))) {
+          throw new Exception("");
+        }
+        if ((!name.equals(sData.get("sName"))) || (!dupinfo.equals(sData.get("sDupInfo")))) {
+          throw new Exception(".");
+        }
+      }
+      if (("1".equals(onetimeHit)) && (onetimeHit != null))
+      {
+        params.put("userId", (String)user.get("id"));
+        params.put("ip", req.getRemoteAddr());
+        params.put("requestedUrl", req.getRequestURI());
+        params.put("device", "web");
+        
+        this.loginService.updateMediaBoardHitcount(params);
+        this.loginService.insertVideoAccessLog(params);
+        
+        session.removeAttribute("onetimeHit");
+      }
+      if ((params.get("cpage") == null) || (((String)params.get("cpage")).trim().equals(""))) {
+        params.put("cpage", "1");
+      }
+      Map curr = null;
+      String curr_no = (String)user.get("curr_no");
+      if (curr_no != null)
+      {
+        Map currMap = (Map)user.get("currMap");
+        curr = (Map)currMap.get(curr_no);
+        model.put("cData", curr);
+        params.put("currno", (String)curr.get("no"));
+      }
+      params.put("stdt_no", (String)user.get("stdt_no"));
+      params.put("curr_no", curr_no);
+      
+      mediaViewData = this.loginService.selectMediaView(params);
+      prev = this.loginService.selectPrevMedia(params);
+      next = this.loginService.selectNextMedia(params);
+      cList = this.loginService.selectMediaBoardComment(params);
+      
+      model.put("mediaViewData", mediaViewData);
+      model.put("prev", prev);
+      model.put("next", next);
+      model.put("cpage", params.get("cpage"));
+      model.put("params", params);
+      model.put("cList", cList);
+      
+      mav = new ModelAndView("/WEB-INF/jsp/login/mediaBoardView.jsp", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("jobAppli method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      
+      boolean isMobile = false;
+      String[] logMP = { "iphone", "ipod", "android", "blackberry", "windows ce", "nokia", "webos", "opera mini", "sonyericsson", "opera mobi", "iemobile" };
+      String logUA = req.getHeader("user-agent").toLowerCase();
+      for (int i = 0; i < logMP.length; i++) {
+        if (logUA.indexOf(logMP[i]) != -1)
+        {
+          isMobile = true;
+          break;
+        }
+      }
+      if (!isMobile) {
+        mav = new ModelAndView("/WEB-INF/jsp/common/error.jsp", model);
+      } else {
+        mav = new ModelAndView("/WEB-INF/jsp/app/common/errorMobile.jsp", model);
+      }
+    }
+    return mav;
+  }
+  
+  @RequestMapping({"/login/updateMediaPlayTime.kh"})
+  public ModelAndView updateMediaPlayTime(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    HttpSession session = req.getSession();
+    Map user = (Map)req.getSession().getAttribute("USER");
+    try
+    {
+      if (user != null)
+      {
+        params.put("stdt_no", (String)user.get("stdt_no"));
+        params.put("userId", (String)user.get("id"));
+        
+        this.loginService.updateMediaBoardRating(params);
+      }
+      mav = new ModelAndView("jsonView", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("jobAppli method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("jsonView", model);
+    }
+    return mav;
+  }
+  
+  @RequestMapping({"/login/mediaBoardComment.kh"})
+  public ModelAndView mediaBoardComment(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    try
+    {
+      String mode = (String)params.get("mode");
+      int result = 0;
+      if ((mode != null) && (mode.equals("insert"))) {
+        result = this.loginService.insertMediaBoardComment(params);
+      } else {
+        result = this.loginService.deleteMediaBoardComment(params);
+      }
+      model.put("result", result);
+      model.put("params", params);
+      mav = new ModelAndView("jsonView", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("currNoticeComment method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("jsonView", model);
+    }
+    return mav;
+  }
