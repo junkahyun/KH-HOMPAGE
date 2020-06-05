@@ -1,0 +1,71 @@
+equestMapping({"/intro/businessAsk.kh"})
+  public ModelAndView businessAsk(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    List<Map<String, String>> list = null;
+    Map<String, String> session = (Map)req.getSession().getAttribute("aduser");
+    try
+    {
+      HttpSession sessions = req.getSession();
+      sessions.setAttribute("oneTimeInsert", "1");
+      
+      mav = new ModelAndView("/WEB-INF/jsp/intro/businessAsk.jsp", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("teacher method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("/WEB-INF/jsp/common/error.jsp", model);
+    }
+    return mav;
+  }
+  
+  @RequestMapping({"/intro/insertBusinessAsk.kh"})
+  public ModelAndView insertBusinessAsk(HttpServletRequest req, HttpServletResponse res)
+  {
+    ModelAndView mav = null;
+    Map<String, Object> model = new HashMap();
+    Map<String, String> params = getParameters(req, null);
+    File newFile = null;
+    HttpSession session = req.getSession();
+    try
+    {
+      session.setAttribute("testemail", params.get("testemail"));
+      if (session.getAttribute("oneTimeInsert").equals("1"))
+      {
+        MultipartHttpServletRequest fileReq = (MultipartHttpServletRequest)req;
+        Iterator<String> fileNumber = fileReq.getFileNames();
+        
+        String name = (String)fileNumber.next();
+        MultipartFile file = fileReq.getFile(name);
+        
+        String realpath = req.getRealPath("/");
+        if (file.getSize() > 0L)
+        {
+          newFile = new File(realpath + Utils.getPropertyData("kh.upload.businessAsk.url"));
+          if (!newFile.exists()) {
+            newFile.mkdirs();
+          }
+          newFile = new File(realpath + Utils.getPropertyData("kh.upload.businessAsk.url") + file.getOriginalFilename());
+          
+          file.transferTo(newFile);
+          params.put("thum_img", file.getOriginalFilename());
+        }
+        int result = this.introService.insertbusinessAsk(params);
+        if (result == 1) {
+          sendMail(newFile, req);
+        }
+        session.removeAttribute("oneTimeInsert");
+      }
+      mav = new ModelAndView("/WEB-INF/jsp/intro/insertBusinessAsk.jsp", model);
+    }
+    catch (Exception e)
+    {
+      logger.error("insertBusinessAsk method error ", e);
+      model.put("message", "[]:[" + e.getMessage() + "]");
+      mav = new ModelAndView("/WEB-INF/jsp/common/error.jsp", model);
+    }
+    return mav;
+  }
